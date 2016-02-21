@@ -5,6 +5,7 @@ import sys
 import argparse
 import re
 from tabulate import tabulate
+from natsort import natsorted
 
 def load_errors(api_key, project_id, severity, release_stages):
     sys.stdout.write('Getting issues from bugsnag')
@@ -57,7 +58,12 @@ def main():
 	    else:
 		errors_by_release[ver] = 1
 
-    print tabulate(sorted(errors_by_release.items()), headers=['Release', 'Errors'])
+    sorted_releases = natsorted(errors_by_release.keys())
+    sorted_items = []
+    for rel in sorted_releases:
+	sorted_items.append((rel, errors_by_release[rel]))
+
+    print tabulate(sorted_items, headers=['Release', 'Errors'])
 
 if __name__ == "__main__":
     main()
