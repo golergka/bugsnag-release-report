@@ -10,21 +10,23 @@ def main():
     parser.add_argument('--project-id', type=str, help='Project Id', required=True, dest='project_id')
     parser.add_argument('--severity', type=str, help='Issue severity filter', default='error')
     parser.add_argument('--release-regex', type=str, help='Regex to group version strings by', default=ur'[0-9]*\.[0-9]*\.[0-9]*', dest='release_regex')
+    parser.add_argument('--release-stages', type=str, help='Release stages to filter on', default='Production,Test', dest='release_stages')
     args = parser.parse_args()
 
     sys.stdout.write('Getting issues from bugsnag')
     sys.stdout.flush()
 
     headers = {'Authorization': 'token ' + args.api_key}
-    payload = {'severity': args.severity}
+    payload = {'severity': args.severity, 'release_stages': args.release_stages }
     url = 'https://api.bugsnag.com/projects/' + args.project_id + '/errors'
-    error_list = []
+    errors = {}
 
     page_limit = None
 
     while url != None and (page_limit == None or page_limit > 0):
 	response = requests.get(url, params=payload, headers=headers)
-	error_list.extend(response.json())
+	for err in response.json():
+	    errors[err['id']] = err
 
 	if 'next' in response.links and 'url' in response.links['next']:
 	    url = response.links['next']['url']
@@ -39,15 +41,15 @@ def main():
 
     sys.stdout.write('\n')
 
-    print 'Total error count: ' + str(len(error_list))
-
-    errors_by_versions = {}
+    print 'Total error count: ' + str(len(errors))
 
     import re
 
+    errors_by_versions = {}
+
     release_filter = re.compile(args.release_regex)
 
-    for err in error_list:
+    for err in errors.values():
 	for v in err['app_versions'].keys():
 	    ver = re.match(release_filter, v).group(0)
 	    if ver in errors_by_versions:
